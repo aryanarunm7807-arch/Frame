@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frame — Photo Analysis &amp; Grading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;1,6..96,400&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="light">
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="wordmark">
+      <span class="wordmark-text">Frame</span>
+      <span class="wordmark-sub">Photo instrument</span>
+    </div>
+    <nav class="mode-nav">
+      <button class="mode-btn active" data-mode="analyze">Analyze</button>
+      <button class="mode-btn" data-mode="match">Color match</button>
+    </nav>
+    <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <span class="theme-toggle-track">
+        <span class="theme-toggle-thumb"></span>
+      </span>
+      <span class="theme-toggle-label" id="themeLabel">Light</span>
+    </button>
+  </div>
+</header>
+
+<main class="stage">
+
+<section id="modeAnalyze" class="mode-section">
+
+  <!-- Empty state / dropzone -->
+  <section id="dropzone" class="dropzone">
+    <div class="dropzone-inner">
+      <svg class="dropzone-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="6" width="36" height="36" rx="1" stroke="currentColor" stroke-width="1.25"/>
+        <circle cx="17" cy="18" r="3" stroke="currentColor" stroke-width="1.25"/>
+        <path d="M6 32L17 22L26 30L34 23L42 30" stroke="currentColor" stroke-width="1.25"/>
+      </svg>
+      <p class="dropzone-title">Drop an image, or select one</p>
+      <p class="dropzone-sub">JPEG, PNG, WebP — processed locally, nothing leaves your device</p>
+      <button id="selectBtn" class="btn-primary">Select image</button>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+      <p id="dropzoneError" class="dropzone-error" role="alert" hidden></p>
+    </div>
+  </section>
+
+  <!-- Working view -->
+  <section id="workspace" class="workspace" hidden>
+
+    <!-- Left: image + histogram -->
+    <div class="pane pane-left">
+      <div class="image-frame">
+        <canvas id="previewCanvas"></canvas>
+        <button id="replaceBtn" class="btn-ghost btn-replace">Replace image</button>
+      </div>
+
+      <div class="spec-block">
+        <div class="spec-label">Luminance histogram</div>
+        <canvas id="histogramCanvas" height="90"></canvas>
+      </div>
+
+      <div class="spec-grid">
+        <div class="spec-item">
+          <span class="spec-item-label">Dimensions</span>
+          <span class="spec-item-value mono" id="specDims">—</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-item-label">File size</span>
+          <span class="spec-item-value mono" id="specSize">—</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-item-label">Format</span>
+          <span class="spec-item-value mono" id="specFormat">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: tabbed instrument panel -->
+    <div class="pane pane-right">
+      <nav class="tabs">
+        <button class="tab active" data-tab="analyze">Analyze</button>
+        <button class="tab" data-tab="resize">Resize</button>
+        <button class="tab" data-tab="compress">Compress</button>
+      </nav>
+
+      <!-- ANALYZE TAB -->
+      <div class="tab-panel active" id="tab-analyze">
+
+        <div class="gauge-wrap">
+          <svg id="gaugeSvg" viewBox="0 0 240 140" class="gauge">
+            <path id="gaugeTrack" d="M 20 130 A 100 100 0 0 1 220 130" fill="none" stroke-linecap="round"/>
+            <path id="gaugeFill" d="M 20 130 A 100 100 0 0 1 220 130" fill="none" stroke-linecap="round"/>
+            <line id="gaugeNeedle" x1="120" y1="130" x2="120" y2="45" stroke-linecap="round"/>
+            <circle cx="120" cy="130" r="6" class="gauge-pivot"/>
+          </svg>
+          <div class="gauge-readout">
+            <span class="gauge-score mono" id="gaugeScore">—</span>
+            <span class="gauge-caption" id="gaugeCaption">Awaiting reading</span>
+          </div>
+        </div>
+
+        <div class="checks" id="checksList">
+          <!-- rows injected by script.js, fixed order: exposure, contrast, white balance, clipping -->
+        </div>
+
+      </div>
+
+      <!-- RESIZE TAB -->
+      <div class="tab-panel" id="tab-resize">
+        <p class="panel-intro">Set new dimensions. Aspect ratio is locked unless you unlock it.</p>
+
+        <div class="field-row">
+          <label class="field">
+            <span class="field-label">Width</span>
+            <input type="number" id="resizeWidth" class="field-input mono" min="1">
+            <span class="field-unit">px</span>
+          </label>
+          <button id="lockAspect" class="lock-btn" aria-pressed="true" aria-label="Toggle aspect ratio lock">
+            <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 7V5a4 4 0 0 1 8 0v2" stroke="currentColor" stroke-width="1.25"/><rect x="3" y="7" width="10" height="7" rx="1" stroke="currentColor" stroke-width="1.25"/></svg>
+          </button>
+          <label class="field">
+            <span class="field-label">Height</span>
+            <input type="number" id="resizeHeight" class="field-input mono" min="1">
+            <span class="field-unit">px</span>
+          </label>
+        </div>
+
+        <div class="preset-row">
+          <button class="preset-chip" data-scale="0.25">25%</button>
+          <button class="preset-chip" data-scale="0.5">50%</button>
+          <button class="preset-chip" data-scale="0.75">75%</button>
+          <button class="preset-chip" data-scale="1">100%</button>
+        </div>
+
+        <div class="result-line">
+          <span>New file (est.)</span>
+          <span class="mono" id="resizeEstimate">—</span>
+        </div>
+
+        <button id="downloadResize" class="btn-primary btn-full">Download resized image</button>
+      </div>
+
+      <!-- COMPRESS TAB -->
+      <div class="tab-panel" id="tab-compress">
+        <p class="panel-intro">Reduce file size by re-encoding quality. Dimensions stay the same.</p>
+
+        <label class="field field-block">
+          <div class="field-row-between">
+            <span class="field-label">Quality</span>
+            <span class="mono" id="qualityValue">80%</span>
+          </div>
+          <input type="range" id="qualitySlider" min="10" max="100" value="80" class="slider">
+        </label>
+
+        <div class="result-line">
+          <span>Original size</span>
+          <span class="mono" id="compressOriginal">—</span>
+        </div>
+        <div class="result-line">
+          <span>New size (est.)</span>
+          <span class="mono" id="compressEstimate">—</span>
+        </div>
+        <div class="result-line result-line-accent">
+          <span>Reduction</span>
+          <span class="mono" id="compressReduction">—</span>
+        </div>
+
+        <button id="downloadCompress" class="btn-primary btn-full">Download compressed image</button>
+      </div>
+
+    </div>
+  </section>
+
+</section>
+
+<!-- ============ COLOR MATCH SECTION ============ -->
+<section id="modeMatch" class="mode-section" hidden>
+
+  <div class="match-intake" id="matchIntake">
+
+    <div class="match-slot" data-role="reference">
+      <div class="match-slot-header">
+        <span class="match-slot-name">Reference</span>
+        <span class="match-slot-hint">Grade to copy</span>
+      </div>
+      <div class="match-slot-inner" id="referenceSlotInner">
+        <svg class="dropzone-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="6" width="36" height="36" rx="1" stroke="currentColor" stroke-width="1.25"/>
+          <circle cx="17" cy="18" r="3" stroke="currentColor" stroke-width="1.25"/>
+          <path d="M6 32L17 22L26 30L34 23L42 30" stroke="currentColor" stroke-width="1.25"/>
+        </svg>
+        <button class="btn-primary" data-select="reference">Select image</button>
+        <input type="file" id="referenceFileInput" accept="image/*" hidden>
+      </div>
+      <canvas class="match-slot-preview" id="referencePreview" hidden></canvas>
+    </div>
+
+    <div class="match-arrow" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12H20M20 12L14 6M20 12L14 18" stroke="currentColor" stroke-width="1.25"/></svg>
+    </div>
+
+    <div class="match-slot" data-role="target">
+      <div class="match-slot-header">
+        <span class="match-slot-name">Target</span>
+        <span class="match-slot-hint">Photo to grade</span>
+      </div>
+      <div class="match-slot-inner" id="targetSlotInner">
+        <svg class="dropzone-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="6" width="36" height="36" rx="1" stroke="currentColor" stroke-width="1.25"/>
+          <circle cx="17" cy="18" r="3" stroke="currentColor" stroke-width="1.25"/>
+          <path d="M6 32L17 22L26 30L34 23L42 30" stroke="currentColor" stroke-width="1.25"/>
+        </svg>
+        <button class="btn-primary" data-select="target">Select image</button>
+        <input type="file" id="targetFileInput" accept="image/*" hidden>
+      </div>
+      <canvas class="match-slot-preview" id="targetPreview" hidden></canvas>
+    </div>
+
+  </div>
+
+  <p id="matchError" class="dropzone-error" role="alert" hidden></p>
+
+  <div id="matchResult" class="match-result" hidden>
+
+    <div class="spec-label">Result <span class="match-status mono" id="matchStatus"></span></div>
+    <div class="match-preview-row">
+      <div class="match-preview-item">
+        <canvas id="matchRefThumb"></canvas>
+        <span>Reference</span>
+      </div>
+      <div class="match-preview-item">
+        <canvas id="matchTargetThumb"></canvas>
+        <span>Target</span>
+      </div>
+      <div class="match-preview-item">
+        <canvas id="matchResultCanvas"></canvas>
+        <span>Result</span>
+      </div>
+    </div>
+
+    <label class="field field-block">
+      <div class="field-row-between">
+        <span class="field-label">Strength</span>
+        <span class="mono" id="matchStrengthValue">100%</span>
+      </div>
+      <input type="range" id="matchStrengthSlider" min="0" max="100" value="100" class="slider">
+    </label>
+
+    <div class="result-line">
+      <span>Output size</span>
+      <span class="mono" id="matchOutputSize">—</span>
+    </div>
+
+    <button id="downloadMatch" class="btn-primary btn-full">Download graded image</button>
+  </div>
+
+</section>
+
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>
