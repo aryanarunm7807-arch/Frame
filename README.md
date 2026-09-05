@@ -2,7 +2,7 @@
 
 A client-side photo analysis and color-grading tool, built entirely in vanilla HTML, CSS, and JavaScript. No frameworks, no backend, no dependencies — every pixel operation runs in the browser.
 
-**[Live demo →](https://aryanarunm7807-arch.github.io/Frame/)**
+**[Live demo →](https://aryanarunm.github.io/Frame/)**
 
 ---
 
